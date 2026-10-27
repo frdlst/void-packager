@@ -1,0 +1,5 @@
+# Packages in frdlst/void-packages to auto-update and publish (x86_64 glibc).
+# One name per line; restricted packages are refused by xbps-src.
+bitwarden-cli
+bitwarden-desktop
+dotnet10-sdk-bin

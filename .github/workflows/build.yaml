@@ -1,0 +1,50 @@
+# Build listed packages that are newer than the published ones and, with
+# `publish`, add them to the release repository.
+# Called from frdlst/void-packages: .github/workflows/void-packager.yaml.
+name: build
+
+on:
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # One publisher at a time; PR checks don't wait behind it.
+    concurrency:
+      group: ${{ inputs.publish && 'void-packager-publish' || format('void-packager-check-{0}', github.ref) }}
+      cancel-in-progress: ${{ !inputs.publish }}
+    container:
+      # Pinned so upstream container changes can't break us; bump by hand.
+      image: ghcr.io/void-linux/void-glibc-full:20261021R2@sha256:9eb02d7ed63f77b785f5b597099292767fab23bbb824aa987f93ac583d8aa44f
+      options: --privileged
+    steps:
+      - name: Prepare container
+        run: |
+          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
+          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git github-cli
+          useradd -G xbuilder -m builder
+
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: frdlst/void-packager
+          ref: main
+          path: .void-packager
+
+      - name: Bootstrap
+        run: .void-packager/scripts/setup.sh
+
+      - name: Build
+        run: sudo -u builder .void-packager/scripts/build.sh
+
+      - name: Publish
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ secrets.VOID_PAT }}
+          XBPS_SIGNING_KEY: ${{ secrets.XBPS_SIGNING_KEY }}
+        run: .void-packager/scripts/publish.sh

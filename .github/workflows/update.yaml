@@ -1,0 +1,46 @@
+# Open (or refresh) one auto-merging PR per listed package with a new upstream version.
+# Called from frdlst/void-packages: .github/workflows/void-packager.yaml.
+name: update
+
+on:
+  workflow_call:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: void-packager-update
+    container:
+      # Keep in sync with build.yaml.
+      image: ghcr.io/void-linux/void-glibc-full:20261021R2@sha256:9eb02d7ed63f77b785f5b597099292767fab23bbb824aa987f93ac583d8aa44f
+      options: --privileged
+    steps:
+      - name: Prepare container
+        run: |
+          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
+          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git github-cli
+          useradd -G xbuilder -m builder
+
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          repository: frdlst/void-packager
+          ref: main
+          path: .void-packager
+
+      - name: Bootstrap
+        run: .void-packager/scripts/setup.sh
+
+      - name: Update
+        env:
+          # A PAT, not GITHUB_TOKEN: PRs opened by GITHUB_TOKEN don't trigger the check.
+          GH_TOKEN: ${{ secrets.VOID_PAT }}
+          GIT_AUTHOR_NAME: frdlst
+          GIT_AUTHOR_EMAIL: devel@frdl.st
+          GIT_COMMITTER_NAME: frdlst
+          GIT_COMMITTER_EMAIL: devel@frdl.st
+        run: sudo -EHu builder sh -c 'gh auth setup-git && .void-packager/scripts/update.sh'
