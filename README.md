@@ -47,9 +47,11 @@ Restricted packages are never built: CI never sets `XBPS_ALLOW_RESTRICTED`.
 
 ## Maintenance
 
-- Rebasing the fork: `git pull --rebase` first so you keep the bot's merged
-  bumps, then rebase onto upstream and `git push --force-with-lease`. The forced
-  push refreshes any open update PRs.
+- Syncing the fork with upstream: `./sync` in the fork. It pulls the bot's
+  merged bumps, folds each fork package's later commits into its
+  `New package: <pkg>-<version>` commit, rebases onto upstream and prints the
+  `git push --force-with-lease=master:<sha>` to run. The forced push refreshes
+  any open update PRs.
 - Container: both workflows pin `void-glibc-full` by digest. Bump both together.
 - Secrets in the fork: `VOID_PAT` (fine-grained PAT, Contents + Pull requests RW
   on both repos) and `XBPS_SIGNING_KEY`. Losing the key means every user has to

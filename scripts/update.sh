@@ -29,12 +29,12 @@ git checkout -qB "update/$pkg" master
 sed -i -e "s/^version=.*/version=$new/" -e "s/^revision=.*/revision=1/" "$template"
 
 # xgensum can't handle per-arch checksums inside case blocks, so for every arch
-# the template supports, hash each distfile and swap in the new sum.
+# hash each distfile and swap in the new sum. `show` (unlike show-avail) works
+# for nocross packages; archs without distfiles contribute nothing.
 # shortcut: plain sha256 only, no "@" content checksums; extend if a listed package uses them.
 declare -A sums
 for profile in common/cross-profiles/*.sh; do
 	arch=$(basename "$profile" .sh)
-	./xbps-src -a "$arch" show-avail "$pkg" || continue
 	mapfile -t urls < <(./xbps-src -a "$arch" show "$pkg" | sed -n 's/^distfiles:\t*//p')
 	mapfile -t old < <(./xbps-src -a "$arch" show "$pkg" | sed -n 's/^checksum:\t*//p')
 	[ ${#urls[@]} -eq ${#old[@]} ] || { echo "$pkg/$arch: distfiles/checksum count mismatch" >&2; exit 1; }
@@ -44,9 +44,11 @@ for profile in common/cross-profiles/*.sh; do
 		sed -i "s/${old[i]}/${sums[$u]}/" "$template"
 	done
 done
+[ ${#sums[@]} -gt 0 ] || { echo "$pkg: no distfiles found" >&2; exit 1; }
 
 title="$pkg: update to $new."
-git commit -qam "$title"
+# Only the template: setup.sh's set_mirror.sh leaves etc/xbps.d modified.
+git commit -qm "$title" -- "$template"
 git push -qf origin "update/$pkg"
 
 repo=$GITHUB_REPOSITORY

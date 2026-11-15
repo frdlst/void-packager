@@ -21,7 +21,11 @@ Read README.md first for the moving parts.
 - Scripts run from the void-packages root inside the pinned container;
   `build.sh`/`update.sh` as user `builder`, `setup.sh`/`publish.sh` as root.
 - The container digest appears in both workflows; keep them identical.
-- Commit messages in the fork follow upstream style: `<pkg>: update to <ver>.`
+- Commit messages in the fork follow "Committing your changes" in the fork's
+  CONTRIBUTING.md: one commit per package, e.g. `New package: <pkg>-<ver>`,
+  `<pkg>: update to <ver>.`. The fork's `sync` folds every commit touching only
+  `srcpkgs/<pkg>/` into that package's `New package:` commit, and aborts on
+  commits mixing a fork package with other files.
 - The fork-side trigger file is `.github/workflows/void-packager.yaml` in
   frdlst/void-packages. It must stay a new file (never edit upstream files)
   so rebases onto upstream stay conflict-free.
