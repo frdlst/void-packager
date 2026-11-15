@@ -3,3 +3,8 @@
 bitwarden-cli
 bitwarden-desktop
 dotnet10-sdk-bin
+looking-glass
+frdls-dwl
+frdls-dwlb
+frdls-wbg
+neovim-nightly

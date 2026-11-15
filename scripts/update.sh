@@ -18,7 +18,21 @@ fi
 pkg=$1
 template=srcpkgs/$pkg/template
 
-new=$(./xbps-src update-check "$pkg" | sed -n "s/^$pkg-.* -> $pkg-//p" | sort -V | tail -n1)
+# Git snapshots (_git=<repo>, optional _ref=, default HEAD) are versioned by
+# the UTC committer date of the ref's commit, pinned in _commit=.
+git=$(sed -n 's/^_git=//p' "$template")
+if [ -n "$git" ]; then
+	ref=$(sed -n 's/^_ref=//p' "$template")
+	tmp=$(mktemp -d)
+	trap 'rm -rf "$tmp"' EXIT
+	git -C "$tmp" init -q
+	git -C "$tmp" fetch -q --depth 1 --filter=tree:0 "$git" "${ref:-HEAD}"
+	read -r commit new < <(TZ=UTC git -C "$tmp" log -1 --format='%H %cd' \
+		--date=format-local:%Y%m%d.%H%M%S FETCH_HEAD)
+	[ "$commit" != "$(sed -n 's/^_commit=//p' "$template")" ] || new=
+else
+	new=$(./xbps-src update-check "$pkg" | sed -n "s/^$pkg-.* -> $pkg-//p" | sort -V | tail -n1)
+fi
 if [ -z "$new" ]; then
 	echo "$pkg: up to date"
 	exit 0
@@ -27,6 +41,7 @@ echo "$pkg: updating to $new"
 
 git checkout -qB "update/$pkg" master
 sed -i -e "s/^version=.*/version=$new/" -e "s/^revision=.*/revision=1/" "$template"
+[ -z "$git" ] || sed -i "s/^_commit=.*/_commit=$commit/" "$template"
 
 # xgensum can't handle per-arch checksums inside case blocks, so for every arch
 # hash each distfile and swap in the new sum. `show` (unlike show-avail) works

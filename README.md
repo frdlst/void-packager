@@ -29,7 +29,9 @@ Logic lives here; triggers and secrets live in the fork's
 | Push to `master` | `build.yaml` + publish |
 | Weekly cron, manual dispatch, force-push to `master` | `update.yaml` (dispatch also builds) |
 
-- `scripts/update.sh`: for each package in `packages.txt`, `xbps-src update-check`.
+- `scripts/update.sh`: for each package in `packages.txt`, `xbps-src update-check`,
+  or for git snapshots the commit at `_ref` (default `HEAD`) of `_git`, pinned in
+  `_commit` and versioned by its UTC committer date (`YYYYMMDD.HHMMSS`).
   On a new version it bumps `version`/`revision` and every per-arch checksum on
   `update/<pkg>` (recreated from `master` each run), then opens an auto-merging PR.
 - `scripts/build.sh`: builds each listed package whose template version is newer
@@ -42,7 +44,9 @@ Restricted packages are never built: CI never sets `XBPS_ALLOW_RESTRICTED`.
 ## Adding a package
 
 1. Make sure `./xbps-src update-check <pkg>` in the fork reports new versions;
-   if not, add `srcpkgs/<pkg>/update` (`site=`/`pattern=`).
+   if not, add `srcpkgs/<pkg>/update` (`site=`/`pattern=`). Git snapshots
+   instead set literal `_git=<repo>`, `_commit=<sha>` and optionally `_ref=`
+   in the template.
 2. Add the name to `packages.txt`.
 
 ## Maintenance
